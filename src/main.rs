@@ -1,10 +1,13 @@
 #[macro_use]
 extern crate log;
 
+use std::collections::HashMap;
 use actix_web::{App, delete, get, HttpResponse, HttpServer, post, Responder, web};
 use actix_web::middleware::Logger;
+use actix_web_prom::PrometheusMetricsBuilder;
 use chrono;
 use env_logger::Env;
+use gethostname::gethostname;
 
 
 #[post("/msg")]
@@ -36,14 +39,33 @@ async fn get_messages() -> impl Responder {
     HttpResponse::Ok().body(format!("You requested all msgs. One day soon you will get it. But not today."))
 }
 
+async fn health() -> HttpResponse {
+    HttpResponse::Ok().finish()
+}
+
+fn get_hostname() -> String {
+    gethostname().to_str().unwrap_or("UNKNOWN").to_string()
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let mut labels = HashMap::new();
+    labels.insert("hostname".to_string(), get_hostname());
+    let prometheus = PrometheusMetricsBuilder::new("api")
+        .endpoint("/metrics")
+        .const_labels(labels)
+        .build()
+        .unwrap();
+
+
     env_logger::init_from_env(Env::default().default_filter_or("info"));
     info!("Starting up..");
-    HttpServer::new(|| {
+    HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
             .wrap(Logger::new("%a %{User-Agent}i"))
+            .wrap(prometheus.clone())
+            .service(web::resource("/health").to(health))
             .service(new_message)
             .service(del_message)
             .service(get_message)
@@ -54,3 +76,4 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
+
