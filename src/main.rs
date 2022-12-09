@@ -1,5 +1,11 @@
-use actix_web::{get, post, delete, web, App, HttpResponse, HttpServer, Responder};
+#[macro_use]
+extern crate log;
+
+use actix_web::{App, delete, get, HttpResponse, HttpServer, post, Responder, web};
+use actix_web::middleware::Logger;
 use chrono;
+use env_logger::Env;
+
 
 #[post("/msg")]
 async fn new_message(body: String) -> impl Responder {
@@ -32,8 +38,12 @@ async fn get_messages() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
+    info!("Starting up..");
     HttpServer::new(|| {
         App::new()
+            .wrap(Logger::default())
+            .wrap(Logger::new("%a %{User-Agent}i"))
             .service(new_message)
             .service(del_message)
             .service(get_message)
