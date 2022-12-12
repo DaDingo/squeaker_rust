@@ -1,0 +1,42 @@
+version: '3.7'
+
+services:
+  db:
+    image: postgres:10.17-stretch
+    restart: always
+    networks:
+     - dos
+    volumes:
+      #- "./init_db:/docker-entrypoint-initdb.d"
+      - "postgres_data:/var/lib/postgresql/data"
+    environment:
+      POSTGRES_PASSWORD: admin
+      POSTGRES_USER: admin
+      POSTGRES_DB: devospace
+      #EREZEPT_USER: service
+      #EREZEPT_PASSWORD: password
+      #EREZEPT_DATABASE: devospace
+      #EREZEPT_TABLE: messages
+    ports:
+      - 15432:5432
+
+  adminer:
+    image: adminer
+    restart: always
+    networks:
+     - dos
+    ports:
+      - 15080:8080
+
+  sqeaker:
+    build:
+      context: .
+      dockerfile: app/Docker/Dockerfile.release
+    ports:
+      - 12080:8080
+
+networks:
+  dos:
+
+volumes:
+  postgres_data:
